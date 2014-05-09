@@ -108,9 +108,14 @@ function pad(n) {
 	return Array(5 - n.toString().length).join('0') + n;
 }
 
-function runMongoMigrate(opts, direction, migrationEnd) {
+function runMongoMigrate(opts, direction, migrationEnd, cb) {
 	if (opts == undefined || opts.database == undefined) {
 		throw new Error("Please declare the options object to connect in the database")
+	}
+
+	if (typeof(direction) == "function") {
+		cb = direction;
+		direction = null;
 	}
 
 	setDbConfig(opts);
@@ -251,6 +256,7 @@ function runMongoMigrate(opts, direction, migrationEnd) {
 		var db = require('./lib/db');
 		db.getConnection(dbConfig, function (err, db) {
 			if (err) {
+				cb();
 				throw err
 			}
 			var migrationCollection = db.migrationCollection,
@@ -259,6 +265,7 @@ function runMongoMigrate(opts, direction, migrationEnd) {
 			migrationCollection.find({}).sort({num: -1}).limit(1).toArray(function (err, migrationsRun) {
 				if (err) {
 					console.error('Error querying migration collection', err);
+					cb();
 					throw err
 				}
 
@@ -290,6 +297,7 @@ function runMongoMigrate(opts, direction, migrationEnd) {
 
 				set.on('save', function () {
 					log('migration', 'complete');
+					cb();
 				});
 
 				set[direction](null, lastMigrationNum);
